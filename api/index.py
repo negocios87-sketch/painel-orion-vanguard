@@ -4,7 +4,7 @@ Orion e Vanguard são a mesma equipe (alias da Colab Orion → Vanguard, nome of
 Tudo pelo mês fechado escolhido no filtro (mês + ano), horário de Brasília (R0).
 
 Regras da CRN usadas:
-  Ganhos (data de ganho): M1 · M2-B · M2-M · M3-M · T1-M · R3 · R4 · G1 · LC1 · G2
+  Ganhos (data de ganho): M1 · M2-B · M2-M · M3-M · T1-M · R3 · R4 · G1 · LC1 · G2 · WS1
   Reuniões (data da reunião): RC1 (feitas) · CV2 (conversão, deals únicos)
   Perdidos (data de perda): M8 · P1
   Pessoas e metas: Colab, Metas, Feriados (crn.base.fontes) · R2 (papel)
@@ -65,7 +65,8 @@ try:
     from crn.base.texto import cf, norm
     from crn.regras import (cv2_conversao_reuniao as cv2, g2_produto as g2, m1_ganho_closer as m1,
                             m2_faturamento_closer as m2, m3_atingimento_closer as m3, m6_reunioes_sdr as m6,
-                            m8_deal_perdido as m8, p1_motivo_perda as p1, t1_mtd_closer as t1)
+                            m8_deal_perdido as m8, p1_motivo_perda as p1, t1_mtd_closer as t1,
+                            ws1_workshop as ws1)
     from crn.regras._atividades import do_tipo, por_responsavel      # base da RC1 (feitas)
     from crn.regras.lc1_licenciado import eh_licenciado
 except Exception as _e:                                 # painel sobe e mostra o erro, em vez de cair
@@ -160,6 +161,12 @@ def _calcular(d: dict, ano: int, mes: int, incluir_fora: bool) -> dict:
     deals_time = [x for nn, ds in deals_por_pessoa.items() if conta(nn) for x in ds]
 
     bruto, multi = m2.bruto(deals_time), m2.multiplicador(deals_time)
+
+    # Workshop / Sala (WS1): utm_campaign + parcela irmã, sobre os ganhos válidos do mês
+    ids_ws = ws1.ganhos_workshop(sep["validos"])
+    ws = [x for x in deals_time if x.get("id") in ids_ws]
+    workshop = {"bruto": m2.bruto(ws), "multi": m2.multiplicador(ws), "volume": m1.volume(ws),
+                "pct_bruto": _pct(m2.bruto(ws), bruto), "pct_multi": _pct(m2.multiplicador(ws), multi)}
     meta_time = sum(meta_por[nn]["meta_financeira"] for nn in closers
                     if nn in meta_por and meta_por[nn]["papel"] == "closer" and conta(nn))
 
@@ -273,6 +280,7 @@ def _calcular(d: dict, ano: int, mes: int, incluir_fora: bool) -> dict:
         "cards": {"bruto": bruto, "multi": multi, "meta": meta_time, "ating": m3.atingimento(multi, meta_time),
                   "reunioes": cv2_time["reunioes"], "reunioes_ganhas": cv2_time["ganhas"],
                   "volume": m1.volume(deals_time), "perdidos": len(perd), "fora": fora_info},
+        "workshop": workshop,
         "dias": dias, "produtos": produtos, "vendedores": vendedores, "conversao": conversao,
         "perdidos_dia": perd_dia, "motivos": motivos, "origem": origem, "origem_pela_criacao": pela_criacao,
         "du": du,

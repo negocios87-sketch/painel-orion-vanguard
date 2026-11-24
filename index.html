@@ -89,6 +89,14 @@
       <div class="card"><div class="rot">Reuniões realizadas (closers)</div><div class="val" id="c-reunioes"></div><div class="sub">deals únicos · data da reunião</div></div>
     </div>
 
+    <h2>Workshop / Sala · data de ganho</h2>
+    <div class="cards">
+      <div class="card"><div class="rot">% do faturamento (bruto)</div><div class="val" id="w-pct"></div><div class="sub" id="w-pct-multi"></div></div>
+      <div class="card"><div class="rot">Valor Workshop (bruto)</div><div class="val" id="w-bruto"></div></div>
+      <div class="card"><div class="rot">Valor Workshop (c/ multiplicador)</div><div class="val" id="w-multi"></div></div>
+      <div class="card"><div class="rot">Vendas de Workshop</div><div class="val" id="w-volume"></div><div class="sub" id="w-vol-pct"></div></div>
+    </div>
+
     <h2>Venda diária</h2>
     <div class="bloco">
       <h3>Valor vendido por dia</h3>
@@ -211,6 +219,13 @@ function desenhar(d) {
       : `${esc(f.nome)} fora do total: ${brl(f.bruto)} bruto · ${brl(f.multi)} c/ multi · ${int(f.volume)} ${f.volume === 1 ? "venda" : "vendas"}`).join("<br>");
   } else nf.hidden = true;
   document.getElementById("c-reunioes").textContent = int(c.reunioes);
+  const w = d.workshop;
+  document.getElementById("w-pct").textContent = pct(w.pct_bruto);
+  document.getElementById("w-pct-multi").textContent = pct(w.pct_multi) + " do valor c/ multiplicador";
+  document.getElementById("w-bruto").textContent = brl(w.bruto);
+  document.getElementById("w-multi").textContent = brl(w.multi);
+  document.getElementById("w-volume").textContent = int(w.volume);
+  document.getElementById("w-vol-pct").textContent = "de " + int(c.volume) + (c.volume === 1 ? " venda do time" : " vendas do time");
   document.getElementById("c-perdidos").textContent = int(c.perdidos);
 
   // produtos
@@ -246,7 +261,7 @@ function desenhar(d) {
   const k = d.carimbo;
   document.getElementById("carimbo").innerHTML =
     `CRN ${esc(k.crn)} · Mês: ${esc(d.rotulo_mes)} (mês fechado) · Squad: Vanguard (Orion + Vanguard) · Atribuição: dono do deal (closer)<br>` +
-    `Ganhos: data de ganho · Valor: bruto e c/ multiplicador; % da meta e % MTD c/ multiplicador · Recorte: closers = Vanguard na Colab do mês sem meta de reunião · Cortesia, outra moeda, venda automática e licenciado fora<br>` +
+    `Ganhos: data de ganho · Valor: bruto e c/ multiplicador; % da meta e % MTD c/ multiplicador · Recorte: closers = Vanguard na Colab do mês sem meta de reunião · Cortesia, outra moeda, venda automática e licenciado fora · Workshop/Sala: utm_campaign + parcela irmã (WS1)<br>` +
     `Reuniões: data da reunião, deals únicos com reunião feita (RC1) e ganhos hoje (CV2, visão safra)<br>` +
     `Perdidos: data de perda, dono no time (closer ou SDR) · Origem: data da última aplicação (vazia → criação) · Produto e motivo em texto cru<br>` +
     `Victor Marçal: ${k.fora_incluido ? "incluído no total" : "fora do total e da meta do time"} · Dados do Pipedrive de ${esc(k.buscado_em)}`;
