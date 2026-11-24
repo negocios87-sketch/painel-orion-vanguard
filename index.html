@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel Orion / Vanguard · Board Academy</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --fundo: #f4f4f2;
+    --cartao: #fcfcfb;
+    --borda: #e2e1dc;
+    --texto: #1d1d1b;
+    --texto-2: #52514e;
+    --texto-3: #8a8985;
+    --serie-1: #2a78d6;   /* bruto */
+    --serie-2: #eb6834;   /* c/ multiplicador */
+    --serie-perda: #7d7c77;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto);
+         font: 14px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  header { background: var(--cartao); border-bottom: 1px solid var(--borda);
+           padding: 14px 28px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  header img { height: 34px; }
+  header h1 { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: .3px; }
+  header h1 small { display: block; font-size: 12px; font-weight: 400; color: var(--texto-3); }
+  .filtros { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  select, button { font: inherit; padding: 6px 10px; border: 1px solid var(--borda);
+                   border-radius: 6px; background: #fff; color: var(--texto); }
+  button { cursor: pointer; }
+  button.principal { background: #2b2b29; color: #fff; border-color: #2b2b29; }
+  button:disabled { opacity: .5; cursor: wait; }
+  label.check { display: flex; align-items: center; gap: 6px; color: var(--texto-2); font-size: 13px; }
+  main { padding: 20px 28px 40px; max-width: 1400px; margin: 0 auto; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--texto-3);
+       font-weight: 600; margin: 28px 0 10px; }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .card { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 16px 18px; }
+  .card .rot { font-size: 12px; color: var(--texto-3); }
+  .card .val { font-size: 26px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .card .sub { font-size: 12px; color: var(--texto-2); margin-top: 4px; }
+  .card .nota { font-size: 11.5px; color: var(--texto-3); margin-top: 6px; border-top: 1px dashed var(--borda); padding-top: 6px; }
+  .grade-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .bloco { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 16px 18px; }
+  .bloco h3 { font-size: 14px; margin: 0 0 4px; font-weight: 600; }
+  .bloco .desc { font-size: 12px; color: var(--texto-3); margin: 0 0 10px; }
+  .grafico { position: relative; height: 280px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-size: 12px; color: var(--texto-3); font-weight: 600;
+       border-bottom: 1px solid var(--borda); padding: 6px 8px; }
+  td { padding: 6px 8px; border-bottom: 1px solid #efeee9; }
+  th.n, td.n { text-align: right; }
+  tr.fora td { color: var(--texto-3); }
+  tr.total td { font-weight: 600; border-top: 1px solid var(--borda); }
+  .etq { font-size: 11px; border: 1px solid var(--borda); border-radius: 4px; padding: 0 5px; margin-left: 6px; color: var(--texto-3); }
+  .legenda { display: flex; gap: 16px; font-size: 12px; color: var(--texto-2); margin-bottom: 6px; }
+  .legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .secao-perdidos { border-top: 2px solid var(--borda); margin-top: 34px; padding-top: 4px; }
+  .carimbo { margin-top: 30px; font-size: 11.5px; color: var(--texto-3); line-height: 1.7; }
+  #status { color: var(--texto-2); font-size: 13px; }
+  .erro { background: #fff4f2; border: 1px solid #e9c9c2; color: #8a2f1d; padding: 12px 16px; border-radius: 8px; }
+  @media (max-width: 1000px) { .cards { grid-template-columns: 1fr 1fr; } .grade-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <img src="https://raw.githubusercontent.com/negocios87-sketch/fotos_time_comercial/main/logo_board.png" alt="Board Academy">
+  <h1>Painel ORION / VANGUARD<small>Ganhos, reuniões e perdidos do time</small></h1>
+  <div class="filtros">
+    <select id="f-mes"></select>
+    <select id="f-ano"></select>
+    <label class="check"><input type="checkbox" id="f-fora"> Incluir Victor Marçal no total</label>
+    <button class="principal" id="b-aplicar">Aplicar filtro</button>
+    <button id="b-atualizar" title="Busca de novo no Pipedrive, sem usar o cache">Atualizar com o Pipe</button>
+  </div>
+</header>
+
+<main>
+  <div id="status">Carregando…</div>
+  <div id="conteudo" hidden>
+
+    <h2>Ganhos · data de ganho</h2>
+    <div class="cards">
+      <div class="card"><div class="rot">Valor total (bruto)</div><div class="val" id="c-bruto"></div><div class="sub" id="c-volume"></div></div>
+      <div class="card"><div class="rot">Valor com multiplicador</div><div class="val" id="c-multi"></div></div>
+      <div class="card"><div class="rot">% da meta (multiplicador)</div><div class="val" id="c-ating"></div><div class="sub" id="c-meta"></div><div class="nota" id="c-fora" hidden></div></div>
+      <div class="card"><div class="rot">Reuniões realizadas (closers)</div><div class="val" id="c-reunioes"></div><div class="sub">deals únicos · data da reunião</div></div>
+    </div>
+
+    <h2>Venda diária</h2>
+    <div class="bloco">
+      <h3>Valor vendido por dia</h3>
+      <p class="desc">Barras: valor bruto e com multiplicador. Número acima das barras: volume de vendas do dia.</p>
+      <div class="legenda"><span><i style="background:var(--serie-1)"></i>Bruto</span><span><i style="background:var(--serie-2)"></i>Com multiplicador</span></div>
+      <div class="grafico"><canvas id="g-dias"></canvas></div>
+    </div>
+
+    <div class="grade-2" style="margin-top:14px">
+      <div class="bloco">
+        <h3>Por produto</h3>
+        <p class="desc">Produto como está no Pipedrive (sem agrupamento).</p>
+        <table id="t-produtos"><thead><tr><th>Produto</th><th class="n">Volume</th><th class="n">Bruto</th><th class="n">C/ multiplicador</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="bloco">
+        <h3>Vendedores</h3>
+        <p class="desc">Atingimento e % MTD com multiplicador.</p>
+        <table id="t-vendedores"><thead><tr><th>Closer</th><th class="n">Bruto</th><th class="n">C/ multiplicador</th><th class="n">Meta</th><th class="n">Atingimento</th><th class="n">% MTD</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div class="bloco" style="margin-top:14px">
+      <h3>Reuniões realizadas × ganhos dos closers</h3>
+      <p class="desc">Deals únicos com reunião feita no mês (data da reunião) e quantos estão ganhos hoje. Visão safra: o número de um mês passado sobe conforme os deals ganham.</p>
+      <table id="t-conversao"><thead><tr><th>Closer</th><th class="n">Reuniões realizadas</th><th class="n">Ganhos</th><th class="n">% de ganho</th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <div class="secao-perdidos">
+      <h2>Perdidos · data de perda</h2>
+      <div class="cards">
+        <div class="card"><div class="rot">Volume de perdidos</div><div class="val" id="c-perdidos"></div><div class="sub">deals com dono no time</div></div>
+      </div>
+      <div class="bloco" style="margin-top:14px">
+        <h3>Perdidos por dia</h3>
+        <div class="grafico" style="height:220px"><canvas id="g-perdidos"></canvas></div>
+      </div>
+      <div class="grade-2" style="margin-top:14px">
+        <div class="bloco">
+          <h3>Quando o lead perdido aplicou</h3>
+          <p class="desc" id="d-origem"></p>
+          <table id="t-origem"><thead><tr><th>Mês da aplicação</th><th class="n">Volume</th><th class="n">%</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="bloco">
+          <h3>Motivos de perda</h3>
+          <p class="desc">Motivo como está no Pipedrive.</p>
+          <table id="t-motivos"><thead><tr><th>Motivo</th><th class="n">Volume</th><th class="n">%</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="carimbo" id="carimbo"></div>
+  </div>
+</main>
+
+<script>
+const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const brl = v => (v || 0).toLocaleString("pt-BR", {style: "currency", currency: "BRL", maximumFractionDigits: 0});
+const brlCurto = v => {
+  const a = Math.abs(v || 0);
+  if (a >= 1e6) return "R$ " + (v / 1e6).toLocaleString("pt-BR", {maximumFractionDigits: 1}) + " mi";
+  if (a >= 1e3) return "R$ " + (v / 1e3).toLocaleString("pt-BR", {maximumFractionDigits: 0}) + " mil";
+  return brl(v);
+};
+const pct = v => v === null || v === undefined ? "—" : v.toLocaleString("pt-BR", {maximumFractionDigits: 1}) + "%";
+const int = v => (v || 0).toLocaleString("pt-BR");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let graficos = {};
+
+// filtros: mês e ano (mês fechado)
+(function () {
+  const hoje = new Date(new Intl.DateTimeFormat("sv-SE", {timeZone: "America/Sao_Paulo"}).format(new Date()) + "T12:00:00");
+  const fm = document.getElementById("f-mes"), fa = document.getElementById("f-ano");
+  MESES.forEach((m, i) => fm.add(new Option(m, i + 1)));
+  for (let a = hoje.getFullYear(); a >= 2025; a--) fa.add(new Option(a, a));
+  fm.value = hoje.getMonth() + 1; fa.value = hoje.getFullYear();
+})();
+
+document.getElementById("b-aplicar").onclick = () => carregar(false);
+document.getElementById("b-atualizar").onclick = () => carregar(true);
+
+async function carregar(atualizar) {
+  const bts = document.querySelectorAll("button");
+  bts.forEach(b => b.disabled = true);
+  const st = document.getElementById("status");
+  st.className = ""; st.hidden = false;
+  st.textContent = atualizar ? "Buscando no Pipedrive…" : "Carregando…";
+  const q = new URLSearchParams({
+    mes: document.getElementById("f-mes").value, ano: document.getElementById("f-ano").value,
+    incluir_fora: document.getElementById("f-fora").checked ? "1" : "0", atualizar: atualizar ? "1" : "0"});
+  try {
+    const r = await fetch("/api/index?" + q);
+    const d = await r.json();
+    if (!r.ok || d.erro) throw new Error(d.erro || ("HTTP " + r.status));
+    desenhar(d);
+    st.hidden = true;
+    document.getElementById("conteudo").hidden = false;
+  } catch (e) {
+    st.className = "erro";
+    st.textContent = "Não consegui carregar o painel: " + e.message;
+  } finally {
+    bts.forEach(b => b.disabled = false);
+  }
+}
+
+function linhas(id, html) { document.querySelector("#" + id + " tbody").innerHTML = html; }
+
+function desenhar(d) {
+  const c = d.cards;
+  document.getElementById("c-bruto").textContent = brl(c.bruto);
+  document.getElementById("c-volume").textContent = int(c.volume) + (c.volume === 1 ? " venda" : " vendas");
+  document.getElementById("c-multi").textContent = brl(c.multi);
+  document.getElementById("c-ating").textContent = pct(c.ating);
+  document.getElementById("c-meta").textContent = "Meta do time: " + brl(c.meta);
+  const nf = document.getElementById("c-fora");
+  if (c.fora.length) {
+    nf.hidden = false;
+    nf.innerHTML = c.fora.map(f => f.incluido
+      ? `${esc(f.nome)} incluído no total: ${brl(f.bruto)} bruto · ${brl(f.multi)} c/ multi (sem meta)`
+      : `${esc(f.nome)} fora do total: ${brl(f.bruto)} bruto · ${brl(f.multi)} c/ multi · ${int(f.volume)} ${f.volume === 1 ? "venda" : "vendas"}`).join("<br>");
+  } else nf.hidden = true;
+  document.getElementById("c-reunioes").textContent = int(c.reunioes);
+  document.getElementById("c-perdidos").textContent = int(c.perdidos);
+
+  // produtos
+  linhas("t-produtos", d.produtos.map(p =>
+    `<tr><td>${esc(p.produto)}</td><td class="n">${int(p.volume)}</td><td class="n">${brl(p.bruto)}</td><td class="n">${brl(p.multi)}</td></tr>`).join("")
+    || `<tr><td colspan="4">Sem vendas no mês.</td></tr>`);
+
+  // vendedores
+  linhas("t-vendedores", d.vendedores.map(v =>
+    `<tr class="${v.fora_do_total ? "fora" : ""}"><td>${esc(v.nome)}${v.fora_do_total ? '<span class="etq">fora do total</span>' : ""}</td>
+     <td class="n">${brl(v.bruto)}</td><td class="n">${brl(v.multi)}</td><td class="n">${v.meta ? brl(v.meta) : "—"}</td>
+     <td class="n">${pct(v.ating)}</td><td class="n">${pct(v.mtd)}</td></tr>`).join(""));
+
+  // conversão de reunião (CV2)
+  linhas("t-conversao", d.conversao.map(v =>
+    `<tr class="${v.fora_do_total ? "fora" : ""}"><td>${esc(v.nome)}${v.fora_do_total ? '<span class="etq">fora do total</span>' : ""}</td>
+     <td class="n">${int(v.reunioes)}</td><td class="n">${int(v.ganhas)}</td><td class="n">${pct(v.pct)}</td></tr>`).join(""));
+
+  // origem dos perdidos
+  document.getElementById("d-origem").textContent =
+    `Mês da data da última aplicação; sem aplicação, vale a criação do deal (${int(d.origem_pela_criacao)} deals).`;
+  linhas("t-origem", d.origem.map(o =>
+    `<tr><td>${esc(o.faixa)}</td><td class="n">${int(o.volume)}</td><td class="n">${pct(o.pct)}</td></tr>`).join(""));
+
+  // motivos
+  linhas("t-motivos", d.motivos.map(m =>
+    `<tr><td>${esc(m.motivo)}</td><td class="n">${int(m.volume)}</td><td class="n">${pct(m.pct)}</td></tr>`).join("")
+    || `<tr><td colspan="3">Sem perdidos no mês.</td></tr>`);
+
+  graficoDias(d.dias);
+  graficoPerdidos(d.perdidos_dia);
+
+  const k = d.carimbo;
+  document.getElementById("carimbo").innerHTML =
+    `CRN ${esc(k.crn)} · Mês: ${esc(d.rotulo_mes)} (mês fechado) · Squad: Vanguard (Orion + Vanguard) · Atribuição: dono do deal (closer)<br>` +
+    `Ganhos: data de ganho · Valor: bruto e c/ multiplicador; % da meta e % MTD c/ multiplicador · Recorte: closers = Vanguard na Colab do mês sem meta de reunião · Cortesia, outra moeda, venda automática e licenciado fora<br>` +
+    `Reuniões: data da reunião, deals únicos com reunião feita (RC1) e ganhos hoje (CV2, visão safra)<br>` +
+    `Perdidos: data de perda, dono no time (closer ou SDR) · Origem: data da última aplicação (vazia → criação) · Produto e motivo em texto cru<br>` +
+    `Victor Marçal: ${k.fora_incluido ? "incluído no total" : "fora do total e da meta do time"} · Dados do Pipedrive de ${esc(k.buscado_em)}`;
+}
+
+const eixoBase = {grid: {color: "#ecebe6"}, ticks: {color: "#8a8985", font: {size: 11}}, border: {display: false}};
+const diaRot = s => s.slice(8, 10) + "/" + s.slice(5, 7);
+
+// número acima de cada grupo de barras (volume do dia)
+const rotuloVolume = {
+  id: "rotuloVolume",
+  afterDatasetsDraw(chart, _a, opts) {
+    if (!opts.valores) return;
+    const {ctx} = chart;
+    const metas = chart.data.datasets.map((_, i) => chart.getDatasetMeta(i));
+    ctx.save();
+    ctx.font = "11px Segoe UI, system-ui, sans-serif";
+    ctx.fillStyle = "#52514e";
+    ctx.textAlign = "center";
+    opts.valores.forEach((v, i) => {
+      if (!v) return;
+      const barras = metas.map(m => m.data[i]).filter(Boolean);
+      const x = barras.reduce((s, b) => s + b.x, 0) / barras.length;
+      const y = Math.min(...barras.map(b => b.y));
+      ctx.fillText(v, x, y - 5);
+    });
+    ctx.restore();
+  }
+};
+
+function graficoDias(dias) {
+  graficos.dias && graficos.dias.destroy();
+  graficos.dias = new Chart(document.getElementById("g-dias"), {
+    type: "bar",
+    data: {
+      labels: dias.map(x => diaRot(x.dia)),
+      datasets: [
+        {label: "Bruto", data: dias.map(x => x.bruto), backgroundColor: css("--serie-1"), borderRadius: 4, borderSkipped: "start"},
+        {label: "Com multiplicador", data: dias.map(x => x.multi), backgroundColor: css("--serie-2"), borderRadius: 4, borderSkipped: "start"}]
+    },
+    options: {
+      maintainAspectRatio: false, layout: {padding: {top: 18}},
+      datasets: {bar: {categoryPercentage: .75, barPercentage: .9}},
+      interaction: {mode: "index", intersect: false},
+      plugins: {
+        legend: {display: false},
+        rotuloVolume: {valores: dias.map(x => x.volume)},
+        tooltip: {callbacks: {
+          title: it => "Dia " + it[0].label,
+          label: it => `${it.dataset.label}: ${brl(it.raw)}`,
+          afterBody: it => `Vendas: ${int(dias[it[0].dataIndex].volume)}`}}
+      },
+      scales: {x: {...eixoBase, grid: {display: false}},
+               y: {...eixoBase, beginAtZero: true, ticks: {...eixoBase.ticks, callback: v => brlCurto(v)}}}
+    },
+    plugins: [rotuloVolume]
+  });
+}
+
+function graficoPerdidos(dias) {
+  graficos.perdidos && graficos.perdidos.destroy();
+  graficos.perdidos = new Chart(document.getElementById("g-perdidos"), {
+    type: "bar",
+    data: {labels: dias.map(x => diaRot(x.dia)),
+           datasets: [{label: "Perdidos", data: dias.map(x => x.volume), backgroundColor: css("--serie-perda"),
+                       borderRadius: 4, borderSkipped: "start", categoryPercentage: .7}]},
+    options: {
+      maintainAspectRatio: false,
+      plugins: {legend: {display: false},
+                tooltip: {callbacks: {title: it => "Dia " + it[0].label, label: it => `Perdidos: ${int(it.raw)}`}}},
+      scales: {x: {...eixoBase, grid: {display: false}},
+               y: {...eixoBase, beginAtZero: true, ticks: {...eixoBase.ticks, precision: 0}}}
+    }
+  });
+}
+
+carregar(false);
+</script>
+</body>
+</html>
