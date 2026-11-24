@@ -113,8 +113,8 @@
       </div>
       <div class="bloco">
         <h3>Vendedores</h3>
-        <p class="desc">Atingimento e % MTD com multiplicador.</p>
-        <table id="t-vendedores"><thead><tr><th>Closer</th><th class="n">Bruto</th><th class="n">C/ multiplicador</th><th class="n">Meta</th><th class="n">Atingimento</th><th class="n">% MTD</th></tr></thead><tbody></tbody></table>
+        <p class="desc">Atingimento e % MTD com multiplicador. % Workshop = parte do valor bruto do vendedor que veio de Workshop/Sala.</p>
+        <table id="t-vendedores"><thead><tr><th>Closer</th><th class="n">Bruto</th><th class="n">C/ multiplicador</th><th class="n">Meta</th><th class="n">Atingimento</th><th class="n">% MTD</th><th class="n">% Workshop</th></tr></thead><tbody></tbody></table>
       </div>
     </div>
 
@@ -237,7 +237,8 @@ function desenhar(d) {
   linhas("t-vendedores", d.vendedores.map(v =>
     `<tr class="${v.fora_do_total ? "fora" : ""}"><td>${esc(v.nome)}${v.fora_do_total ? '<span class="etq">fora do total</span>' : ""}</td>
      <td class="n">${brl(v.bruto)}</td><td class="n">${brl(v.multi)}</td><td class="n">${v.meta ? brl(v.meta) : "—"}</td>
-     <td class="n">${pct(v.ating)}</td><td class="n">${pct(v.mtd)}</td></tr>`).join(""));
+     <td class="n">${pct(v.ating)}</td><td class="n">${pct(v.mtd)}</td>
+     <td class="n" title="${brl(v.bruto_ws)} de Workshop">${pct(v.pct_ws)}</td></tr>`).join(""));
 
   // conversão de reunião (CV2)
   linhas("t-conversao", d.conversao.map(v =>

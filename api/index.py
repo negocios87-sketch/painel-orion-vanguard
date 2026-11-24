@@ -205,10 +205,12 @@ def _calcular(d: dict, ano: int, mes: int, incluir_fora: bool) -> dict:
     for nn in sorted(closers | set(deals_por_pessoa)):
         ds = deals_por_pessoa.get(nn, [])
         b, mu = m2.bruto(ds), m2.multiplicador(ds)
+        b_ws = m2.bruto([x for x in ds if x.get("id") in ids_ws])                   # WS1
         meta = meta_por[nn]["meta_financeira"] if nn in meta_por else 0.0
         vendedores.append({"nome": nome_exib(nn), "volume": m1.volume(ds), "bruto": b, "multi": mu,
                            "meta": meta, "ating": m3.atingimento(mu, meta) if meta else None,      # M3-M
                            "mtd": t1.mtd(mu, meta, du["total"], du["passados"])["pct"] if meta else None,  # T1-M
+                           "bruto_ws": b_ws, "pct_ws": _pct(b_ws, b),
                            "fora_do_total": nn in fora and not incluir_fora})
     vendedores.sort(key=lambda r: (r["fora_do_total"], -r["multi"]))
 
