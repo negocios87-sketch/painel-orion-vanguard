@@ -54,11 +54,22 @@ def _carregar_crn():
     sys.path.insert(0, os.path.join(base, "pacote"))
     return os.path.basename(raiz).rsplit("-", 1)[-1][:7]   # commit que entrou
 
-_COMMIT_CRN = _carregar_crn()
-
-import crn
-if _COMMIT_CRN:
-    crn.versao = lambda: _COMMIT_CRN                        # carimbo mostra o commit carregado
+_ERRO_CRN = None
+try:
+    _COMMIT_CRN = _carregar_crn()
+    import crn
+    if _COMMIT_CRN:
+        crn.versao = lambda: _COMMIT_CRN                    # carimbo mostra o commit carregado
+    from crn.base import fontes, fuso, pipedrive
+    from crn.base.config import campo
+    from crn.base.texto import cf, norm
+    from crn.regras import (cv2_conversao_reuniao as cv2, g2_produto as g2, m1_ganho_closer as m1,
+                            m2_faturamento_closer as m2, m3_atingimento_closer as m3, m6_reunioes_sdr as m6,
+                            m8_deal_perdido as m8, p1_motivo_perda as p1, t1_mtd_closer as t1)
+    from crn.regras._atividades import do_tipo, por_responsavel      # base da RC1 (feitas)
+    from crn.regras.lc1_licenciado import eh_licenciado
+except Exception as _e:                                 # painel sobe e mostra o erro, em vez de cair
+    _ERRO_CRN = f"{type(_e).__name__}: {_e}"
 # ── fim do bloco da CRN ───────────────────────────────────────
 
 import calendar
@@ -67,16 +78,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 
-from flask import Flask, jsonify, request
-
-from crn.base import fontes, fuso, pipedrive
-from crn.base.config import campo
-from crn.base.texto import cf, norm
-from crn.regras import (cv2_conversao_reuniao as cv2, g2_produto as g2, m1_ganho_closer as m1,
-                        m2_faturamento_closer as m2, m3_atingimento_closer as m3, m6_reunioes_sdr as m6,
-                        m8_deal_perdido as m8, p1_motivo_perda as p1, t1_mtd_closer as t1)
-from crn.regras._atividades import do_tipo, por_responsavel          # base da RC1 (feitas)
-from crn.regras.lc1_licenciado import eh_licenciado
+from flask import Flask, jsonify, request, send_file
 
 app = Flask(__name__)
 
@@ -280,8 +282,18 @@ def _calcular(d: dict, ano: int, mes: int, incluir_fora: bool) -> dict:
 
 
 # ── rotas ─────────────────────────────────────────────────────
+PAGINA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "index.html")
+
+
+@app.route("/")
+def pagina():
+    return send_file(PAGINA)
+
+
 @app.route("/crn-versao")
 def crn_versao():
+    if _ERRO_CRN:
+        return jsonify({"versao": None, "erro": _ERRO_CRN}), 500
     return jsonify({"versao": crn.versao()})
 
 
@@ -290,6 +302,8 @@ def crn_versao():
 def dados():
     if request.args.get("acao") == "versao" or "crn-versao" in request.path:
         return crn_versao()
+    if _ERRO_CRN:
+        return jsonify({"erro": _ERRO_CRN}), 500
     hoje = fuso.hoje_brasil()
     try:
         ano = int(request.args.get("ano", hoje.year))
